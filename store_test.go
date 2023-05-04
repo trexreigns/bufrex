@@ -261,7 +261,7 @@ func TestSetupInRedisNotInMemory(t *testing.T) {
 	}
 }
 
-func setOnDelete(store *store) {
+func setOnDelete(store *Store) {
 	deleted := func(key string, value interface{}) {
 		fmt.Println("just deleted data")
 	}

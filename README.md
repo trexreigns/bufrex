@@ -1,5 +1,5 @@
 # Bufrex
-Multi Layered key/value system for golang.
+Multi Layered key/value caching system.
 Bufrex can be used purely as an in-memory key/value store. It can also be extended to use a Redis adapter to persist cached data into redis database. In memory, bufrex is a thread-safe map with expiration date. When used with redis, the data is first stored in memory and then pushed to redis, making it available across multiple instances connected to the redis instance.
 
 ## Benefits

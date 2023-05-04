@@ -22,7 +22,7 @@ type Value struct {
 }
 
 // store struct holds the key value store.
-type store struct {
+type Store struct {
 	defaultExpiration time.Duration
 	cache             map[string]Value
 	mutex             sync.RWMutex
@@ -34,8 +34,8 @@ type store struct {
 // func declaration
 
 // New creates a new instance of the store struct.
-func New(expiry time.Duration, cleanupInterval time.Duration) *store {
-	store := &store{
+func New(expiry time.Duration, cleanupInterval time.Duration) *Store {
+	store := &Store{
 		defaultExpiration: expiry,
 		cache:             make(map[string]Value),
 	}
@@ -46,7 +46,7 @@ func New(expiry time.Duration, cleanupInterval time.Duration) *store {
 
 // Set adds a new key/value pair to cache.
 // This fails by returning false if the key already exists in cache.
-func (store *store) Set(key string, value interface{}, expires time.Duration) bool {
+func (store *Store) Set(key string, value interface{}, expires time.Duration) bool {
 	store.mutex.RLock()
 
 	_, found := store.cache[key]
@@ -60,7 +60,7 @@ func (store *store) Set(key string, value interface{}, expires time.Duration) bo
 }
 
 // Put adds or updates a key/value pair.
-func (store *store) Put(key string, value interface{}, expires time.Duration) {
+func (store *Store) Put(key string, value interface{}, expires time.Duration) {
 	store.mutex.Lock()
 	store.cache[key] = Value{expiry: store.getUnix(expires), Object: value}
 	store.mutex.Unlock()
@@ -70,7 +70,7 @@ func (store *store) Put(key string, value interface{}, expires time.Duration) {
 	return
 }
 
-func (store *store) putFromPersistence(key string, value interface{}, expires time.Duration) {
+func (store *Store) putFromPersistence(key string, value interface{}, expires time.Duration) {
 	store.mutex.Lock()
 	store.cache[key] = Value{expiry: store.getUnix(expires), Object: value}
 	store.mutex.Unlock()
@@ -78,7 +78,7 @@ func (store *store) putFromPersistence(key string, value interface{}, expires ti
 }
 
 // Get retrieves value assigned to key from the store
-func (store *store) Get(key string) (interface{}, bool) {
+func (store *Store) Get(key string) (interface{}, bool) {
 	store.mutex.RLock()
 	value, found := store.cache[key]
 	store.mutex.RUnlock()
@@ -105,7 +105,7 @@ func (store *store) Get(key string) (interface{}, bool) {
 	return value.Object, true
 }
 
-func (store *store) Delete(key string) {
+func (store *Store) Delete(key string) {
 	if value, found := store.Get(key); found {
 		store.mutex.Lock()
 		delete(store.cache, key)
@@ -123,13 +123,13 @@ func (store *store) Delete(key string) {
 }
 
 // OnDeleted callback is called after data is deleted from cache
-func (store *store) OnDelete(fn func(string, interface{})) {
+func (store *Store) OnDelete(fn func(string, interface{})) {
 	store.onDeleted = fn
 	return
 }
 
 // Helper functions
-func (store *store) getUnix(duration time.Duration) int64 {
+func (store *Store) getUnix(duration time.Duration) int64 {
 	if duration == DefaultExpiry {
 		return time.Now().Add(store.defaultExpiration).UnixNano()
 	}
@@ -158,7 +158,7 @@ type cleaner struct {
 	done            chan bool
 }
 
-func (store *store) Run() {
+func (store *Store) Run() {
 	ticker := time.NewTicker(store.janitor.cleanupInterval)
 	for {
 		select {
@@ -174,11 +174,11 @@ func (store *store) Run() {
 	}
 }
 
-func (store *store) StopCleaner() {
+func (store *Store) StopCleaner() {
 	store.janitor.done <- true
 }
 
-func StartCleaner(store *store, interval time.Duration) {
+func StartCleaner(store *Store, interval time.Duration) {
 	store.janitor = &cleaner{
 		cleanupInterval: interval,
 		done:            make(chan bool),
@@ -187,7 +187,7 @@ func StartCleaner(store *store, interval time.Duration) {
 	return
 }
 
-func (store *store) DeleteExpired() {
+func (store *Store) DeleteExpired() {
 	// create a map to temporary hold expired values
 	var expired_store map[string]Value
 	expired_store = make(map[string]Value)
@@ -211,7 +211,7 @@ func (store *store) DeleteExpired() {
 }
 
 // Adapter Configruation
-func (store *store) ConfigureAdapter(adapter string, params interface{}, encoder func(string, interface{}) (string, error), decoder func(string, string) (interface{}, error)) *store {
+func (store *Store) ConfigureAdapter(adapter string, params interface{}, encoder func(string, interface{}) (string, error), decoder func(string, string) (interface{}, error)) *Store {
 	switch adapter {
 	case "redis":
 		if redis_params, ok := params.(*redis.Options); ok {
@@ -226,6 +226,6 @@ func (store *store) ConfigureAdapter(adapter string, params interface{}, encoder
 	}
 }
 
-func (store *store) adapterExists() bool {
+func (store *Store) adapterExists() bool {
 	return store.redis != nil
 }
